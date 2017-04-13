@@ -52,7 +52,7 @@ function Snake()
    * Initialize the game.
    */
   this.init = function() {
-    'use strict'
+    'use strict';
 
     scene.dataset.init = true;
 
@@ -94,7 +94,7 @@ function Snake()
    * Clear the scene of any drawings.
    */
   function clearScene() {
-    'use strict'
+    'use strict';
 
     context.clearRect(0,0,scene.width,scene.height);
     context.beginPath();
@@ -104,7 +104,7 @@ function Snake()
    * Draw the scene.
    */
   function drawScene() {
-    'use strict'
+    'use strict';
 
     // Draw a rectangle, the play field.
     context.rect(
@@ -126,7 +126,7 @@ function Snake()
    * Draw the snake body
    */
   function drawSnake() {
-    'use strict'
+    'use strict';
 
     var length = snakeBody.length;
     for (var i=0; i<length; i++) {
@@ -156,7 +156,7 @@ function Snake()
    */
   function detectCollision(newPosition)
   {
-    'use strict'
+    'use strict';
 
     var collisionType;
 
@@ -203,7 +203,7 @@ function Snake()
    * Calculate new position and move the last body part to the new position.
    */
   this.move = function() {
-    'use strict'
+    'use strict';
 
     if (dead) return;
 
@@ -270,7 +270,7 @@ function Snake()
    * Draw the food on the scene.
    */
   function drawFood() {
-    'use strict'
+    'use strict';
 
     if(foodPosition) {
       context.fillStyle = '#ffffff';
@@ -313,7 +313,7 @@ function Snake()
    * Eat food.
    */
   function eat() {
-    'use strict'
+    'use strict';
 
     // Spawn new food.
     spawnFood();
@@ -365,7 +365,7 @@ function Snake()
    * Die like a loser.
    */
   function die() {
-    'use strict'
+    'use strict';
     dead = true;
     clearTimeout(timeout);
   }
@@ -375,7 +375,7 @@ function Snake()
    * @param {Event} event
    */
   function keyListener(event) {
-    'use strict'
+    'use strict';
 
     switch(event.keyCode) {
       case 87:
@@ -418,7 +418,7 @@ function Snake()
  */
 function Utils()
 {
-  'use strict'
+  'use strict';
 
   /**
    * http://stackoverflow.com/a/728694/540812
