@@ -25,8 +25,13 @@ function Snake()
     }, startLength: 3
   };
 
-  var bodyPrototype = { x: 0, y: 0, drawn: false },
+  var bodyPrototype = { x: 0, y: 0 },
       snakeBody = [];
+
+  this.getSnakeBody = function(){
+    'use strict'
+    return snakeBody;
+  };
 
   /**
    * Initialize the game
@@ -63,6 +68,12 @@ function Snake()
     context.stroke();
   };
 
+  function clearScene() {
+    'use strict'
+    context.clearRect(0,0,scene.width,scene.height);
+    context.beginPath();
+  }
+
   /**
    * Draw the scene
    */
@@ -90,19 +101,68 @@ function Snake()
     for (var i=0; i<length; i++) {
       var currentPart = snakeBody[i];
 
-      if (! currentPart.drawn) {
-        console.log(
-          "Drawing body part",
-          currentPart
-        );
-        context.rect(
-          currentPart.x,
-          currentPart.y,
-          settings.pixelSize.width,
-          settings.pixelSize.height
-        );
-      }
+      context.rect(
+        currentPart.x,
+        currentPart.y,
+        settings.pixelSize.width,
+        settings.pixelSize.height
+      );
     }
+  }
+
+  var directionOptions = [
+    'up',
+    'down',
+    'left',
+    'right'
+  ];
+
+  this.direction = directionOptions[0];
+
+  /**
+   * Calculate new position and move the last body part to the new position
+   */
+  this.move = function() {
+    'use strict'
+
+    // First, clear the canvas and redraw the scene
+    clearScene();
+    drawScene();
+
+    var currentHead    = snakeBody[0],
+        currentTailEnd = snakeBody.pop(),
+        newPosition    = {
+          x: currentHead.x,
+          y: currentHead.y
+        };
+
+    switch (self.direction) {
+      case 'up':
+        newPosition.y -= settings.pixelSize.height;
+        break;
+      case 'down':
+        newPosition.y += settings.pixelSize.height;
+        break;
+      case 'left':
+        newPosition.x -= settings.pixelSize.width;
+        break;
+      case 'right':
+        newPosition.x += settings.pixelSize.width;
+        break;
+      default:
+        console.error('Invalid movement direction');
+        return;
+    }
+
+    currentTailEnd.x = newPosition.x;
+    currentTailEnd.y = newPosition.y;
+    console.log('New position:', newPosition);
+
+    // Move the tail end to the first position in the array
+    snakeBody.unshift(currentTailEnd);
+
+    drawSnake();
+    context.stroke();
   }
 }
 
