@@ -290,7 +290,7 @@ function Snake()
    * Spawn one food in the scene and destroy the previous one.
    */
   function spawnFood() {
-    'use strict'
+    'use strict';
 
     var newX = new Utils().range(settings.pixelSize.width, settings.canvasSize.width - settings.pixelSize.width*2),
         newY = new Utils().range(settings.pixelSize.height, settings.canvasSize.height - settings.pixelSize.height*2);
