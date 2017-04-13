@@ -9,7 +9,8 @@ function Snake()
       context = scene.getContext('2d'),
       dead    = false,
       timeout = null,
-      foodPosition;
+      foodPosition,
+      score   = 0;
 
   if (scene.dataset.init) {
     throw new Error("Already instanced!");
@@ -29,9 +30,10 @@ function Snake()
         x: 0,
         y: 0
     }, startLength: 3,
-    speed: 1000,
+    speed: 500,
     maxSpeed: 200,
-    speedIncrement: 5
+    speedIncrement: 5,
+    scoreIncrement: 100
   };
 
   /**
@@ -82,7 +84,10 @@ function Snake()
     drawSnake();
     spawnFood();
 
-    context.stroke();
+    // Draw instructions on screen
+    context.textAlign = 'center';
+    context.font      = settings.pixelSize.height + "px Arial";
+    context.fillText('Press ENTER to start', settings.canvasSize.width / 2, settings.canvasSize.height / 2);
   };
 
   /**
@@ -108,6 +113,11 @@ function Snake()
       settings.canvasSize.width - settings.pixelSize.width * 2,
       settings.canvasSize.height - settings.pixelSize.height * 2
     );
+
+    context.textAlign = 'left';
+    context.font = settings.pixelSize.height + "px Arial";
+    context.fillText("Score: " + score, settings.pixelSize.width, settings.pixelSize.height-2);
+    context.fillText("Length: " + snakeBody.length, settings.canvasSize.width / 2, settings.pixelSize.height-2);
 
     context.stroke();
   }
@@ -263,18 +273,14 @@ function Snake()
     'use strict'
 
     if(foodPosition) {
-      context.rect(
-        foodPosition.x,
-        foodPosition.y,
-        foodPosition.w,
-        foodPosition.h
-      );
+      context.fillStyle = '#ffffff';
       context.fillRect(
         foodPosition.x,
         foodPosition.y,
         foodPosition.w,
         foodPosition.h
       );
+      context.fillStyle = '#000000';
 
       context.stroke();
     }
@@ -332,6 +338,17 @@ function Snake()
     if (settings.speed === settings.maxSpeed) {
       console.info("Full speed achieved!");
     }
+
+    score += settings.scoreIncrement;
+    drawAll();
+  }
+
+  function drawAll() {
+    "use strict";
+    clearScene();
+    drawScene();
+    drawSnake();
+    drawFood();
   }
 
   /**
@@ -363,22 +380,33 @@ function Snake()
     switch(event.keyCode) {
       case 87:
       case 38:
-        direction = 'up';
+        if (direction !== 'down') {
+          direction = 'up';
+        }
         break;
       case 83:
       case 40:
-        direction = 'down';
+        if (direction !== 'up') {
+          direction = 'down';
+        }
         break;
       case 65:
       case 37:
-        direction = 'left';
+        if (direction !== 'right') {
+          direction = 'left';
+        }
         break;
       case 68:
       case 39:
-        direction = 'right';
+        if (direction !== 'left') {
+          direction = 'right';
+        }
         break;
       case 13:
         self.start();
+        break;
+      case 27:
+        clearTimeout(timeout);
         break;
     }
   }
