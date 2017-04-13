@@ -31,7 +31,7 @@ function Snake()
         y: 0
     }, startLength: 3,
     speed: 500,
-    maxSpeed: 200,
+    maxSpeed: 50,
     speedIncrement: 5,
     scoreIncrement: 100
   };
