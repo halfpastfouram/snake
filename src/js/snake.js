@@ -306,6 +306,16 @@ function Snake()
       h: settings.pixelSize.height
     };
 
+    var snakeBodyLength = snakeBody.length;
+    for (var i=0; i<snakeBodyLength; i++) {
+      var currentPart = snakeBody[i];
+      // Recalculate as long as the new food is underneath the snake's body
+      if (foodPosition.x === currentPart.x && foodPosition.y === currentPart.y) {
+        spawnFood();
+        return;
+      }
+    }
+
     drawFood();
   }
 
