@@ -298,8 +298,9 @@ function Snake()
     var newX = new Utils().range(settings.pixelSize.width, settings.canvasSize.width - settings.pixelSize.width*2),
         newY = new Utils().range(settings.pixelSize.height, settings.canvasSize.height - settings.pixelSize.height*2);
 
-    if (newX < 0) newX *= -1;
-    if (newY < 0) newY *= -1;
+    // If spawned outside of the top or left border, place it at the border.
+    if (newX < settings.pixelSize.width) newX = settings.pixelSize.width;
+    if (newY < settings.pixelSize.height) newY = settings.pixelSize.height;
 
     // Normalize to grid
     foodPosition = {
@@ -367,12 +368,13 @@ function Snake()
   /**
    * Start the game.
    */
-  this.start = function() {
-      timeout = setTimeout(function(){
-        self.move();
-        self.start();
-      }, settings.speed);
-  };
+  function start() {
+    clearTimeout(timeout);
+    timeout = setTimeout(function () {
+      self.move();
+      start();
+    }, settings.speed);
+  }
 
   /**
    * Die like a loser.
@@ -416,10 +418,9 @@ function Snake()
         }
         break;
       case 13:
-        self.start();
-        break;
-      case 27:
-        clearTimeout(timeout);
+        if (!timeout) {
+          start();
+        }
         break;
     }
   }
