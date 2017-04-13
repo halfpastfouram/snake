@@ -128,10 +128,12 @@ function Snake()
   function drawSnake() {
     'use strict';
 
+    context.strokeStyle = '#aaaaaa';
     var length = snakeBody.length;
     for (var i=0; i<length; i++) {
       var currentPart = snakeBody[i];
 
+      context.lineJoin = true;
       context.rect(
         currentPart.x,
         currentPart.y,
@@ -147,6 +149,7 @@ function Snake()
     }
 
     context.stroke();
+    context.strokeStyle = '#000000';
   }
 
   /**
