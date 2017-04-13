@@ -1,50 +1,66 @@
 /**
- *
- *
+ * halfpastfour.am/snake
  * @constructor
  */
 function Snake()
 {
-  var self = this,
-      scene = document.getElementById('scene'),
-      context = scene.getContext('2d');
+  var self    = this,
+      scene   = document.getElementById('scene'),
+      context = scene.getContext('2d'),
+      dead    = false,
+      timeout = null,
+      foodPosition;
+
+  if (scene.dataset.init) {
+    throw new Error("Already instanced!");
+  }
 
   /**
-   * The technical settings
+   * The game's settings.
    */
   var settings = {
     canvasSize: {
-      width: 500,
-      height: 500
+      width:  520,
+      height: 520
     }, pixelSize: {
-      width: 20,
+      width:  20,
       height: 20
     }, startPosition: {
         x: 0,
         y: 0
-    }, startLength: 3
-  };
-
-  var bodyPrototype = { x: 0, y: 0 },
-      snakeBody = [];
-
-  this.getSnakeBody = function(){
-    'use strict'
-    return snakeBody;
+    }, startLength: 3,
+    speed: 1000,
+    maxSpeed: 200,
+    speedIncrement: 5
   };
 
   /**
-   * Initialize the game
+   *  The prototype used for populating the snake's body.
+   * @type {{x: number, y: number}}
+   */
+  var bodyPrototype = { x: 0, y: 0 };
+
+  /**
+   *
+   * @type {Array}
+   */
+  var snakeBody = [];
+
+  /**
+   * Initialize the game.
    */
   this.init = function() {
     'use strict'
-    console.log('Initializing...');
+
+    scene.dataset.init = true;
+
+    window.addEventListener('keydown', keyListener, false);
 
     // Set the scene dimensions
     scene.width = settings.canvasSize.width;
     scene.height = settings.canvasSize.height;
 
-    // Determine the starting position
+    // Determine the starting position.
     var maxPixels = {
       x: settings.canvasSize.width / settings.pixelSize.width,
       y: settings.canvasSize.height / settings.pixelSize.height
@@ -64,22 +80,26 @@ function Snake()
 
     drawScene();
     drawSnake();
+    spawnFood();
 
     context.stroke();
   };
 
+  /**
+   * Clear the scene of any drawings.
+   */
   function clearScene() {
     'use strict'
+
     context.clearRect(0,0,scene.width,scene.height);
     context.beginPath();
   }
 
   /**
-   * Draw the scene
+   * Draw the scene.
    */
   function drawScene() {
     'use strict'
-    console.log('Drawing scene...');
 
     // Draw a rectangle, the play field.
     context.rect(
@@ -88,6 +108,8 @@ function Snake()
       settings.canvasSize.width - settings.pixelSize.width * 2,
       settings.canvasSize.height - settings.pixelSize.height * 2
     );
+
+    context.stroke();
   }
 
   /**
@@ -95,7 +117,6 @@ function Snake()
    */
   function drawSnake() {
     'use strict'
-    console.log('Drawing snake...');
 
     var length = snakeBody.length;
     for (var i=0; i<length; i++) {
@@ -107,36 +128,89 @@ function Snake()
         settings.pixelSize.width,
         settings.pixelSize.height
       );
+      context.fillRect(
+        currentPart.x,
+        currentPart.y,
+        settings.pixelSize.width,
+        settings.pixelSize.height
+      );
     }
+
+    context.stroke();
   }
 
-  var directionOptions = [
-    'up',
-    'down',
-    'left',
-    'right'
-  ];
+  /**
+   * Detect collisions and return details.
+   * @param {{x:number, y:number}} newPosition
+   * @return {{collision: boolean, collisionType: string}}
+   */
+  function detectCollision(newPosition)
+  {
+    'use strict'
 
-  this.direction = directionOptions[0];
+    var collisionType;
+
+    // Check borders
+    if (newPosition.x < settings.pixelSize.width
+      || newPosition.y < settings.pixelSize.height
+      || newPosition.x > settings.canvasSize.width - settings.pixelSize.width * 2
+      || newPosition.y > settings.canvasSize.height - settings.pixelSize.height * 2
+    ) {
+      collisionType = 'border';
+      die();
+    }
+
+    // Check snake body
+    var snakeBodyLength = snakeBody.length;
+    for (var i=0; i<snakeBodyLength; i++) {
+      var currentPart = snakeBody[i];
+
+      if (newPosition.x === currentPart.x && newPosition.y === currentPart.y) {
+        collisionType = 'body';
+        die();
+        break;
+      }
+    }
+
+    // Check food
+    if (foodPosition && foodPosition.x === newPosition.x && foodPosition.y === newPosition.y) {
+      collisionType = 'food';
+    }
+
+    return {
+      collision:     !! collisionType,
+      collisionType: collisionType
+    };
+  }
 
   /**
-   * Calculate new position and move the last body part to the new position
+   * The current direction the snake should move in.
+   * @type {string}
+   */
+  var direction = 'up';
+
+  /**
+   * Calculate new position and move the last body part to the new position.
    */
   this.move = function() {
     'use strict'
 
-    // First, clear the canvas and redraw the scene
+    if (dead) return;
+
+    // First, clear the canvas and redraw the scene.
     clearScene();
     drawScene();
+    drawFood();
 
     var currentHead    = snakeBody[0],
-        currentTailEnd = snakeBody.pop(),
         newPosition    = {
           x: currentHead.x,
           y: currentHead.y
         };
 
-    switch (self.direction) {
+
+    // Calculate the new position coordinates.
+    switch (direction) {
       case 'up':
         newPosition.y -= settings.pixelSize.height;
         break;
@@ -154,18 +228,166 @@ function Snake()
         return;
     }
 
-    currentTailEnd.x = newPosition.x;
-    currentTailEnd.y = newPosition.y;
-    console.log('New position:', newPosition);
+    // Check collision detection
+    var collision = detectCollision(newPosition);
 
-    // Move the tail end to the first position in the array
-    snakeBody.unshift(currentTailEnd);
+    if (dead) {
+      if(confirm("Game over! The snake collided with the " + collision.collisionType + ".\n\nRestart the game?")){
+        window.location.reload();
+      }
+    } else {
+      if (collision.collisionType === 'food') {
+        // Register that the snake has eaten the food.
+        eat();
+      }
 
+      // Pop off the last part of the body
+      var currentTailEnd = snakeBody.pop();
+
+      // Set new position to the object.
+      currentTailEnd.x = newPosition.x;
+      currentTailEnd.y = newPosition.y;
+
+      // Move the tail end to the first position in the array.
+      snakeBody.unshift(currentTailEnd);
+    }
+
+    // Draw the snake.
     drawSnake();
-    context.stroke();
+  }
+
+  /**
+   * Draw the food on the scene.
+   */
+  function drawFood() {
+    'use strict'
+
+    if(foodPosition) {
+      context.rect(
+        foodPosition.x,
+        foodPosition.y,
+        foodPosition.w,
+        foodPosition.h
+      );
+      context.fillRect(
+        foodPosition.x,
+        foodPosition.y,
+        foodPosition.w,
+        foodPosition.h
+      );
+
+      context.stroke();
+    }
+  }
+
+  /**
+   * Spawn one food in the scene and destroy the previous one.
+   */
+  function spawnFood() {
+    'use strict'
+
+    var newX = new Utils().range(settings.pixelSize.width, settings.canvasSize.width - settings.pixelSize.width*2),
+        newY = new Utils().range(settings.pixelSize.height, settings.canvasSize.height - settings.pixelSize.height*2);
+
+    if (newX < 0) newX *= -1;
+    if (newY < 0) newY *= -1;
+
+    // Normalize to grid
+    foodPosition = {
+      x: Math.ceil(newX / settings.pixelSize.width) * settings.pixelSize.width,
+      y: Math.ceil(newY / settings.pixelSize.height) * settings.pixelSize.height,
+      w: settings.pixelSize.width,
+      h: settings.pixelSize.height
+    };
+
+    drawFood();
+  }
+
+  /**
+   * Eat food.
+   */
+  function eat() {
+    'use strict'
+
+    // Spawn new food.
+    spawnFood();
+
+    // Gain one pixel length.
+    var currentTailEnd = snakeBody[snakeBody.length - 1];
+    var newTailEnd     = new Utils().clone(bodyPrototype);
+
+    // Copy position from current tail end.
+    newTailEnd.x = currentTailEnd.x;
+    newTailEnd.y = currentTailEnd.y;
+
+    // Push the new tail end to the end of the body.
+    snakeBody.push(newTailEnd);
+
+    // Adjust speed.
+    if (settings.speed > settings.maxSpeed + settings.speedIncrement) {
+      settings.speed -= settings.speedIncrement;
+    }
+
+    console.info("Speed is now", settings.speed);
+    if (settings.speed === settings.maxSpeed) {
+      console.info("Full speed achieved!");
+    }
+  }
+
+  /**
+   * Start the game.
+   */
+  this.start = function() {
+      timeout = setTimeout(function(){
+        self.move();
+        self.start();
+      }, settings.speed);
+  };
+
+  /**
+   * Die like a loser.
+   */
+  function die() {
+    'use strict'
+    dead = true;
+    clearTimeout(timeout);
+  }
+
+  /**
+   * Reacts to key press events.
+   * @param {Event} event
+   */
+  function keyListener(event) {
+    'use strict'
+
+    switch(event.keyCode) {
+      case 87:
+      case 38:
+        direction = 'up';
+        break;
+      case 83:
+      case 40:
+        direction = 'down';
+        break;
+      case 65:
+      case 37:
+        direction = 'left';
+        break;
+      case 68:
+      case 39:
+        direction = 'right';
+        break;
+      case 13:
+        self.start();
+        break;
+    }
   }
 }
 
+/**
+ * Utilities
+ * @constructor
+ */
 function Utils()
 {
   'use strict'
@@ -181,10 +403,14 @@ function Utils()
     }
     return copy;
   }
-}
 
-window.addEventListener('load', function(){
-  'use strict'
-  window.Snake = new Snake();
-  window.Snake.init();
-});
+  /**
+   * Generate a random number between the given x and y parameter.
+   * @param {number} x
+   * @param {number} y
+   * @return {number}
+   */
+  this.range = function(x, y) {
+    return Math.floor(Math.random() * y) - x;
+  }
+}
