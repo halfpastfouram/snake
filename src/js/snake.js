@@ -5,16 +5,26 @@
 function Snake()
 {
   var self    = this,
-      scene   = document.getElementById('scene'),
-      context = scene.getContext('2d'),
+      canvas  = document.getElementById('scene'),
+      scene,
+      camera,
+      light,
+      renderer,
       dead    = false,
-      timeout = null,
+      timeout,
       foodPosition,
       score   = 0;
 
-  if (scene.dataset.init) {
+  if (canvas.dataset.init) {
     throw new Error("Already instanced!");
   }
+
+  var cameraSettings = {
+    fieldOfView: 75,
+    aspectRatio: window.innerWidth / window.innerHeight,
+    near: 1,
+    far: 1000
+  };
 
   /**
    * The game's settings.
@@ -28,7 +38,8 @@ function Snake()
       height: 20
     }, startPosition: {
         x: 0,
-        y: 0
+        y: 0,
+        z: 0
     }, startLength: 3,
     speed: 500,
     maxSpeed: 50,
@@ -38,9 +49,9 @@ function Snake()
 
   /**
    *  The prototype used for populating the snake's body.
-   * @type {{x: number, y: number}}
+   * @type {{x: number, y: number, z: number}}
    */
-  var bodyPrototype = { x: 0, y: 0 };
+  var bodyPrototype = { x: 0, y: 0, z: 0 };
 
   /**
    *
@@ -54,13 +65,49 @@ function Snake()
   this.init = function() {
     'use strict';
 
-    scene.dataset.init = true;
+    canvas.dataset.init = true;
 
+    // Add event listeners
     window.addEventListener('keydown', keyListener, false);
+    window.addEventListener('resize', onWindowResize, false);
+    window.addEventListener('mousemove', onMouseMove, false);
 
-    // Set the scene dimensions
-    scene.width = settings.canvasSize.width;
-    scene.height = settings.canvasSize.height;
+    // Setup the scene, camera and a renderer
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(
+      cameraSettings.fieldOfView,
+      cameraSettings.aspectRatio,
+      cameraSettings.near,
+      cameraSettings.far
+    );
+
+    // Set camera position
+    camera.position.z = 500;
+    camera.lookAt({x: 0, y:0, z:0 });
+    scene.add(camera);
+
+    // Setup renderer
+    renderer = new THREE.WebGLRenderer({canvas: canvas, alpha: true});
+    renderer.shadowMap.enabled = true;
+
+    drawScene();
+    addLighting();
+
+    // Fill the array snakeBody with the desired amount of body parts; first part is its head.
+    for (var i=1; i<=settings.startLength; i++) {
+      var newBodyPart = new Utils().clone(bodyPrototype);
+
+      newBodyPart.x = settings.startPosition.x;
+      newBodyPart.y = settings.startPosition.y + (i * settings.pixelSize.height);
+      newBodyPart.z = 100;
+      snakeBody.push(newBodyPart);
+    }
+
+    drawSnake();
+
+    onWindowResize();
+    render();
+    return;
 
     // Determine the starting position.
     var maxPixels = {
@@ -70,18 +117,6 @@ function Snake()
 
     settings.startPosition.x = Math.floor((maxPixels.x / 2 ) * settings.pixelSize.width);
     settings.startPosition.y = Math.floor((maxPixels.y / 2 ) * settings.pixelSize.height);
-
-    // Fill the array snakeBody with the desired amount of body parts; first part is its head.
-    for (var i=1; i<=settings.startLength; i++) {
-      var newBodyPart = new Utils().clone(bodyPrototype);
-
-      newBodyPart.x = settings.startPosition.x;
-      newBodyPart.y = settings.startPosition.y + (i * settings.pixelSize.height);
-      snakeBody.push(newBodyPart);
-    }
-
-    drawScene();
-    drawSnake();
     spawnFood();
 
     // Draw instructions on screen
@@ -89,6 +124,15 @@ function Snake()
     context.font      = settings.pixelSize.height + "px Arial";
     context.fillText('Press ENTER to start', settings.canvasSize.width / 2, settings.canvasSize.height / 2);
   };
+
+  /**
+   * Render
+   */
+  function render() {
+    requestAnimationFrame(render);
+
+    renderer.render(scene, camera);
+  }
 
   /**
    * Clear the scene of any drawings.
@@ -107,19 +151,115 @@ function Snake()
     'use strict';
 
     // Draw a rectangle, the play field.
-    context.rect(
-      settings.pixelSize.width,
-      settings.pixelSize.height,
-      settings.canvasSize.width - settings.pixelSize.width * 2,
-      settings.canvasSize.height - settings.pixelSize.height * 2
+    var field = new THREE.Mesh(
+      new THREE.BoxGeometry(520, 520, 20),
+      new THREE.MeshLambertMaterial({color: 0xeeeeee, transparent: true, opacity: 5})
     );
 
-    context.textAlign = 'left';
-    context.font = settings.pixelSize.height + "px Arial";
-    context.fillText("Score: " + score, settings.pixelSize.width, settings.pixelSize.height-2);
-    context.fillText("Length: " + snakeBody.length, settings.canvasSize.width / 2, settings.pixelSize.height-2);
+    field.receiveShadow = true;
+    scene.add(field);
 
-    context.stroke();
+    var loader = new THREE.FontLoader();
+    loader.load( 'js/fonts/Rubik Black_Regular.json', function ( font ) {
+      var scoreGeometry = new THREE.TextGeometry("Score: " + score, {
+        font: font,
+        size: 20,
+        height: 15
+      });
+
+      var scoreElement = new THREE.Mesh(
+        scoreGeometry,
+        new THREE.MeshPhysicalMaterial({color: 0x999999})
+      );
+
+      scoreElement.position.x = -260;
+      scoreElement.position.y = 260;
+      scoreElement.position.z = 0;
+      scoreElement.castShadow = true;
+      scoreElement.receiveShadow = true;
+
+      scene.add(scoreElement);
+
+      var lengthGeometry = new THREE.TextGeometry("Length: " + snakeBody.length, {
+        font: font,
+        size: 20,
+        height: 15
+      });
+
+      lengthGeometry.align = 'right';
+
+      var lengthElement = new THREE.Mesh(
+        lengthGeometry,
+        new THREE.MeshPhysicalMaterial({color: 0x999999})
+      );
+
+      lengthElement.position.x = 120;
+      lengthElement.position.y = 260;
+      lengthElement.position.z = 0;
+      lengthElement.castShadow = true;
+      lengthElement.receiveShadow = true;
+
+      scene.add(lengthElement);
+    });
+  }
+
+  /**
+   * Add lighting to the scene
+   */
+  function addLighting() {
+    console.log("Adding lighting...");
+
+    // Add a directional light
+    light = new THREE.DirectionalLight(0xffffff, .50);
+    light.position.z = 500;
+    light.castShadow = true;
+    scene.add(light);
+
+    // scene.add(new THREE.CameraHelper(light.shadow.camera));
+  }
+
+  /**
+   * Set the camera and light position.
+   * @param {object} coords
+   */
+  function setCameraPosition(coords) {
+    // Adjust camera
+    camera.position.x = -coords.x / 100;
+    camera.position.y = coords.y / 100;
+    camera.lookAt({x: 0, y: 0, z: 0});
+
+    // Adjust light
+    light.position.x = -coords.x / 50;
+    light.position.y = coords.y / 50;
+  }
+
+  /**
+   * Handle the resize event
+   */
+  function onWindowResize() {
+    console.log("Handling resize event...");
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  /**
+   * Mouse position storage
+   * @type {{x: number, y: number}}
+   */
+  var currentMousePos = {x: 0, y: 0};
+
+  /**
+   * Handle the mouse move event
+   * @param {Event} event
+   */
+  function onMouseMove(event) {
+    currentMousePos.x = event.clientX - window.innerWidth / 2;
+    currentMousePos.y = event.clientY - window.innerHeight / 2;
+
+    setCameraPosition(currentMousePos);
   }
 
   /**
@@ -128,28 +268,37 @@ function Snake()
   function drawSnake() {
     'use strict';
 
-    context.strokeStyle = '#aaaaaa';
     var length = snakeBody.length;
     for (var i=0; i<length; i++) {
       var currentPart = snakeBody[i];
 
-      context.lineJoin = true;
-      context.rect(
-        currentPart.x,
-        currentPart.y,
-        settings.pixelSize.width,
-        settings.pixelSize.height
+      var newElement = new THREE.Mesh(
+        new THREE.BoxGeometry(20, 20, 20),
+        new THREE.MeshLambertMaterial({color: 0x999999})
       );
-      context.fillRect(
-        currentPart.x,
-        currentPart.y,
-        settings.pixelSize.width,
-        settings.pixelSize.height
-      );
+
+      newElement.position.x = currentPart.x;
+      newElement.position.y = currentPart.y;
+      newElement.position.z = currentPart.z;
+      scene.add(newElement);
+    //
+    //   context.lineJoin = true;
+    //   context.rect(
+    //     currentPart.x,
+    //     currentPart.y,
+    //     settings.pixelSize.width,
+    //     settings.pixelSize.height
+    //   );
+    //   context.fillRect(
+    //     currentPart.x,
+    //     currentPart.y,
+    //     settings.pixelSize.width,
+    //     settings.pixelSize.height
+    //   );
     }
 
-    context.stroke();
-    context.strokeStyle = '#000000';
+    // context.stroke();
+    // context.strokeStyle = '#000000';
   }
 
   /**
