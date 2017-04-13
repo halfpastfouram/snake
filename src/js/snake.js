@@ -264,7 +264,7 @@ function Snake()
 
     // Draw the snake.
     drawSnake();
-  }
+  };
 
   /**
    * Draw the food on the scene.
@@ -430,7 +430,7 @@ function Utils()
       if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
     }
     return copy;
-  }
+  };
 
   /**
    * Generate a random number between the given x and y parameter.
@@ -440,5 +440,5 @@ function Utils()
    */
   this.range = function(x, y) {
     return Math.floor(Math.random() * y) - x;
-  }
+  };
 }
